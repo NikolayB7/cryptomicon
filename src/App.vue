@@ -28,17 +28,20 @@
                             />
                         </div>
                         <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
-            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              BTC
-            </span>
-                            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              DOGE
-            </span>
-                            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              BCH
-            </span>
-                            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              CHD
+<!--            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">-->
+<!--              BTC-->
+<!--            </span>-->
+<!--                            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">-->
+<!--              DOGE-->
+<!--            </span>-->
+<!--                            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">-->
+<!--              BCH-->
+<!--            </span>-->
+<!--                            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">-->
+<!--              CHD-->
+<!--            </span>-->
+                            <span @click="autoComplete(c)" v-for="(c,idx) of coins" :key="`c-${idx}`" class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
+              {{c}}
             </span>
                         </div>
                         <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
@@ -71,7 +74,7 @@
                 <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
                     <div
                             v-for="(t,idx) in tickers" :key="`ticker${idx}`"
-                            @click="sel = t"
+                            @click="select(t)"
                             :class="{'border-4' : sel === t}"
                             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
                     >
@@ -114,17 +117,14 @@
                 </h3>
                 <div class="flex items-end border-gray-600 border-b border-l h-64">
                     <div
-                            class="bg-purple-800 border w-10 h-24"
-                    ></div>
-                    <div
-                            class="bg-purple-800 border w-10 h-32"
-                    ></div>
-                    <div
-                            class="bg-purple-800 border w-10 h-48"
-                    ></div>
-                    <div
-                            class="bg-purple-800 border w-10 h-16"
-                    ></div>
+                            v-for="(g,idx) in normalizeGraph()"
+                            :key="`graph${idx}`"
+                            :style="{ height: `${g}%`}"
+                            class="bg-purple-800 border w-10"
+                    >
+
+                    </div>
+
                 </div>
                 <button
                         @click="sel = null"
@@ -166,26 +166,54 @@
         name: 'App',
         data() {
             return {
-                ticker: 'default',
-                tickers: [{name: "DEMO1", price: '-'}, {name: "DEMO2", price: '-'}, {name: "DEMO3", price: '-'},],
-                sel: null
+                ticker: '',
+                tickers: [],
+                sel: null,
+                graph: [0,0],
+                coins:['BTC','DOGE','MATIC','ETH','LINK']
 
             }
         },
         methods: {
             add() {
-                const newTicker = {
+                const currentTicker = {
                     name: this.ticker,
                     price: '-'
                 }
+                this.tickers.push(currentTicker)
+                setInterval(async () => {
+                    const f = await fetch(
+                        `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=4f821af60166827718f8c224083791fd853e38b6af78f2d37f14794898754fbc`);
+                    const data = await f.json()
 
-                this.tickers.push(newTicker)
+                    this.tickers.find(t => t.name === currentTicker.name).price =
+                        data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+                    if (this.sel?.name === currentTicker.name) {
+                        // console.log(this.graph,'before this.graph')
+                        this.graph.push(data.USD)
+                        // console.log(this.graph,'after this.graph')
+                    }
+                }, 1000)
+                this.ticker = "";
+
+            },
+            autoComplete(coin){
+                this.ticker = coin
+            },
+            select(ticker){
+                this.sel = ticker;
+                this.graph = []
             },
             handleDelete(tickerToRemove) {
-
                 this.tickers = this.tickers.filter(t => t !== tickerToRemove)
+            },
+            normalizeGraph() {
+                const maxValue = Math.max(...this.graph)
+                const minValue = Math.min(...this.graph)
+                return this.graph.map(
+                    price =>5+ ((price - minValue) * 95) / (maxValue - minValue))
             }
-
         }
     }
 </script>
